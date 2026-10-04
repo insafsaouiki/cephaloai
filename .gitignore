@@ -1,0 +1,6 @@
+venv312/
+__pycache__/
+*.pyc
+data/history/
+models/
+data/raw/cepha400/
