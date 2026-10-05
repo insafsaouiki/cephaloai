@@ -1,0 +1,47 @@
+name: CI Docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-et-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Construire l'image Docker
+        run: docker build -t cephaloai .
+
+      - name: Lancer le conteneur
+        run: docker run -d -p 8501:8501 --name cephaloai-app cephaloai
+
+      - name: Tester que l'application répond
+        run: |
+          sleep 15
+          curl --fail http://localhost:8501/_stcore/health
+
+      - name: Afficher les logs en cas d'échec
+        if: failure()
+        run: docker logs cephaloai-app
+
+      - name: Connexion à GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publier l'image Docker
+        if: github.event_name == 'push'
+        run: |
+          docker tag cephaloai ghcr.io/${{ github.repository }}:latest
+          docker push ghcr.io/${{ github.repository }}:latest
